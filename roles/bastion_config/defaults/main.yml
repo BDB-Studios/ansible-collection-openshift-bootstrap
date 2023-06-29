@@ -1,0 +1,19 @@
+---
+
+sshd:
+  permit_root_login: "no"
+  allow_agent_forwarding: "no"
+  allow_tcp_forwarding: "yes"
+  extra_accept_env:
+    - "KUBECONFIG"
+
+bastion_packages:
+  pip:
+    - kubernetes>=12.0.0
+    - PyYAML >= 3.11
+    - jsonpatch
+    - jmespath
+
+define_oc_env: false
+
+...

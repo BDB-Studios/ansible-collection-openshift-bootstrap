@@ -1,0 +1,20 @@
+---
+
+- name: Ensure we have the required python library on the bastion
+  ansible.builtin.pip:
+    state: present
+    name: "{{ bastion_packages.pip }}"
+  tags:
+    - always
+
+- name: Configure SSHD Service
+  ansible.builtin.include_tasks: sshd.yml
+  tags:
+    - always
+
+- name: Ensure that we have our env variables set for the root user
+  ansible.builtin.include_tasks: bash_config.yml
+  tags:
+    - always
+
+...

@@ -1,0 +1,29 @@
+---
+
+- name: Ensure we have configured our sshd_config file
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - Restart SSHD Service
+  tags:
+    - always
+    - sshd
+
+- name: Ensure we don't prompt the cockpit login message
+  ansible.builtin.file:
+    path: "{{ path }}"
+    state: absent
+  loop:
+    - /etc/issue.d/cockpit.issue
+    - /etc/motd.d/cockpit
+  loop_control:
+    loop_var: path
+
+- name: Restart services early
+  ansible.builtin.meta: flush_handlers
+
+...
