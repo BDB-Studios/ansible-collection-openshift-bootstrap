@@ -1,0 +1,17 @@
+---
+
+nfs_mount_point: "/data"
+
+nfs:
+  base_dir: "{{ nfs_mount_point + '/' + cluster_id  }}/nfs"
+  packages:
+    - lvm2
+    - parted
+    - nfs-utils
+  export_directories:
+    - registry
+    - applications
+    - storage
+    - raft/vault01
+    - raft/vault02
+    - raft/vault03

@@ -1,0 +1,15 @@
+---
+
+- name: Ensure our packages are installed
+  ansible.builtin.dnf:
+    name: "{{ nfs.packages }}"
+    state: present
+  notify:
+    - Enable nfs server
+    - Restart nfs server
+    - Enable rpcbind
+    - Restart rpcbind
+  tags:
+    - nfs
+
+...

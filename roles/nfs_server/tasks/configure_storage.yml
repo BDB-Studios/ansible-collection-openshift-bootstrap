@@ -1,0 +1,74 @@
+---
+
+# We are seeing if we can remove this from the fstab file as if we can it does exist.
+# If it exists, the task is flagged as changed we assume the disk is configured.
+# This is for a scenario where we have multiple clusters on a single kvm instance
+- name: Test if our mount point is already in our fstab file
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    search_string: "{{ nfs_mount_point }}"
+    state: absent
+  check_mode: true
+  register: nfs_server_fstab_entry
+
+- name: Configure our lvm disks if defined
+  when: bastion.lvm_disks is defined and bastion.lvm_disks | count > 0 and nfs_server_fstab_entry is not changed
+  tags:
+    - nfs
+  block:
+    - name: Create our lvm ready partitions on our disks
+      community.general.parted:
+        device: "/dev/{{ device }}"
+        label: "{{ bastion.lvm_type_label | default('msdos') }}"
+        number: 1
+        flags: [lvm]
+        state: present
+      loop: "{{ bastion.lvm_disks }}"
+      loop_control:
+        loop_var: device
+
+    - name: Set our disks fact
+      ansible.builtin.set_fact:
+        nfs_server_lvm_disks: "{{  bastion.lvm_disks | map('regex_replace', '$', '1' ) | list | map('regex_replace', '^', '/dev/' ) | list | join(',') }}"
+
+    - name: Create our volume group
+      community.general.lvg:
+        vg: "{{ bastion.vg_name }}"
+        pvs: "{{ nfs_server_lvm_disks }}"
+        pesize: "16"
+
+    - name: Create a striped logical volume the size of all remaining space in the volume group
+      when: bastion.lvm_disks | count > 1
+      community.general.lvol:
+        vg: "{{ bastion.vg_name }}"
+        lv: "{{ bastion.volume_name }}"
+        size: 100%FREE
+        state: present
+        opts: "-i {{ bastion.lvm_disks | count }} -I 128k"
+        pvs: "{{ nfs_server_lvm_disks }}"
+        shrink: false
+
+    - name: Create a logical volume the size of all remaining space in the volume group
+      when: bastion.lvm_disks | count == 1
+      community.general.lvol:
+        vg: "{{ bastion.vg_name }}"
+        lv: "{{ bastion.volume_name }}"
+        size: 100%FREE
+        state: present
+        pvs: "{{ nfs_server_lvm_disks }}"
+        shrink: false
+
+    - name: Create the filesystem
+      community.general.filesystem:
+        dev: "/dev/mapper/{{ bastion.vg_name }}-{{ bastion.volume_name }}"
+        fstype: xfs
+
+    - name: Mount the filesystem
+      ansible.posix.mount:
+        src: "/dev/mapper/{{ bastion.vg_name }}-{{ bastion.volume_name }}"
+        path: "{{ nfs_mount_point }}"
+        fstype: xfs
+        state: mounted
+
+
+...

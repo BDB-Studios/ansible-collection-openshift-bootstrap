@@ -1,0 +1,18 @@
+---
+
+- name: Install packages
+  ansible.builtin.include_tasks: packages.yml
+  tags:
+    - nfs
+
+- name: Configure Storage
+  ansible.builtin.include_tasks: configure_storage.yml
+  tags:
+    - nfs
+
+- name: Configure our NFS server
+  ansible.builtin.include_tasks: configure_nfs.yml
+  tags:
+    - nfs
+
+...
