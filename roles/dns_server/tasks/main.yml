@@ -1,0 +1,60 @@
+---
+
+- name: Set facts
+  ansible.builtin.set_fact:
+    dns_server_zone_name: "{{ dns.clusterid  }}.{{ dns.domain  }}"
+  tags:
+    - always
+
+- name: Ensure that we have flagged packages removed
+  ansible.builtin.dnf:
+    name: "{{ bind.packages.absent }}"
+    state: absent
+    autoremove: true
+  tags:
+    - dns
+
+- name: Ensure that we have auxillary packages installed
+  ansible.builtin.dnf:
+    name: "{{ bind.packages.present }}"
+    state: present
+  tags:
+    - dns
+
+- name: Ensure we have a named group
+  ansible.builtin.group:
+    name: "{{ bind.user.name }}"
+    gid: "{{ bind.user.gid }}"
+  tags:
+    - dns
+
+- name: Ensure our named user exists
+  ansible.builtin.user:
+    name: "{{ bind.user.name }}"
+    home: "{{ bind.user.home }}"
+    uid: "{{ bind.user.uid }}"
+    group: "{{ bind.user.name }}"
+    shell: "{{ bind.user.shell }}"
+  tags:
+    - dns
+
+- name: Configure bind and zones
+  ansible.builtin.import_tasks: configure.yml
+  tags:
+    - dns
+
+- name: Enable firewall services
+  ansible.posix.firewalld:
+    state: enabled
+    service: "{{ service_name }}"
+    permanent: true
+  loop:
+    - dns
+  loop_control:
+    loop_var: service_name
+  notify:
+    - Reload Firewall
+  tags:
+    - dns
+
+...

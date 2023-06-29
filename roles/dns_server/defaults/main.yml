@@ -1,0 +1,18 @@
+---
+named_image: "bdbstudios/named:el8-latest"
+
+bind:
+  home: /opt/named
+  service: named
+  image_name: "{{ named_image }}"
+  packages:
+    present:
+      - bind-utils
+    absent:
+      - bind
+  user:
+    name: named
+    uid: 25
+    gid: 25
+    home: "/opt/named"
+    shell: "/bin/false"

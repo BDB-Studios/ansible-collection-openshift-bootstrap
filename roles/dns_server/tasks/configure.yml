@@ -1,0 +1,90 @@
+---
+
+- name: Ensure our named home directory exits
+  ansible.builtin.file:
+    state: directory
+    path: "{{ bind.home }}/config"
+    owner: "{{ bind.user.name }}"
+    group: "{{ bind.user.name }}"
+    mode: 0744
+
+- name: Create our named template
+  ansible.builtin.template:
+    dest: "{{ bind.home }}/config/named.conf"
+    src: ./templates/named.conf.j2
+    owner: "{{ bind.user.name }}"
+    group: "{{ bind.user.name }}"
+    mode: 0644
+  tags:
+    - dns
+
+- name: Set our Zone Serial Fact
+  ansible.builtin.set_fact:
+    dns_server_zone_serial: "{{ ansible_date_time.epoch }}"
+  tags:
+    - dns
+
+- name: Create our forward zone file
+  ansible.builtin.template:
+    dest: "{{  bind.home }}/config/{{ dns_server_zone_name }}.db"
+    src: zone.db.j2
+    mode: 0644
+    owner: "{{ bind.user.name }}"
+    group: "{{ bind.user.name }}"
+  notify:
+    - Restart Dns Service
+  tags:
+    - dns
+
+- name: Create our reverse zone file for a single cidr block
+  when: not vlans is defined
+  ansible.builtin.template:
+    dest: "{{  bind.home }}/config/{{ dns_server_zone_name }}-reverse.db"
+    src: reverse.db.j2
+    mode: 0644
+    owner: "{{ bind.user.name }}"
+    group: "{{ bind.user.name }}"
+  notify:
+    - Restart Dns Service
+  tags:
+    - dns
+
+- name: Create our reverse zone file for multiple vlans
+  when: vlans is defined
+  ansible.builtin.template:
+    dest: "{{  bind.home }}/config/{{ dns_server_zone_name }}-reverse.db"
+    src: reverse.db-vlans.j2
+    mode: 0644
+    owner: "{{ bind.user.name }}"
+    group: "{{ bind.user.name }}"
+  notify:
+    - Restart Dns Service
+  tags:
+    - dns
+
+- name: Ensure we have our podman image
+  containers.podman.podman_image:
+    name: "{{ bind.image_name }}"
+  tags:
+    - dns
+
+- name: Create our podman container
+  containers.podman.podman_container:
+    name: "{{ bind.service }}"
+    image: "{{ bind.image_name }}"
+    state: present
+    recreate: true
+    network_mode: host
+    privileged: true
+    volume: "{{ bind.home }}/config:/config:z"
+    generate_systemd:
+      path: /etc/systemd/system/
+      new: true
+      restart_policy: always
+      time: 120
+      names: true
+      container_prefix: ""
+      separator: ""
+  tags:
+    - dns
+  notify: Enable and Start DNS Service

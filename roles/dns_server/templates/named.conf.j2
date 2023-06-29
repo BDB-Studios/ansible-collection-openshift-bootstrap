@@ -1,0 +1,100 @@
+acl "trusted" {
+  {{ ansible_default_ipv4.address }}/32;
+
+  {%- if vlans is defined %}
+  {%- for vlan in vlans %}
+  {%- set ip_addr=vlan.network + '/' + vlan.prefix %}
+
+  {{ ip_addr | ansible.utils.ipaddr('network/prefix') }};
+
+  {%- endfor %}
+  {%- else %}
+
+  {{ networking_defaults.network }}/{{ networking_defaults.prefix }};
+
+  {% endif %}
+  {{ openshift.cluster_network | default("10.128.0.0/14") }};
+  localhost;
+  localnets;
+};
+
+options {
+  listen-on port 53 {
+    {% if vlans is defined %}
+    {% for vlan in vlans %}
+    {{ vlan.ipaddr }};
+    {% endfor %}
+    {% else %}
+    {{ ansible_default_ipv4.address }};
+    {% endif %}
+ };
+
+  directory 	"/var/named";
+  dump-file 	"/var/named/data/cache_dump.db";
+  statistics-file "/var/named/data/named_stats.txt";
+  memstatistics-file "/var/named/data/named_mem_stats.txt";
+
+  allow-query     { trusted; };
+  recursion yes;
+  allow-recursion { trusted; };
+
+  forwarders {
+    {% if vlans is defined %}
+    {% for vlan in vlans %}
+    {{ vlan.ipaddr }};
+    {% endfor %}
+    {% endif %}
+
+    {{ dns.forwader1}};
+    {{ dns.forwarder2}};
+  };
+
+  dnssec-validation {{ dnssec_validation | default('yes') }};
+  {% if dnssec_validation is defined and dnssec_validation == 'no' -%}
+  dnssec-enable no;
+  {% else -%}
+  dnssec-enable yes;
+  {% endif %}
+
+  filter-aaaa-on-v4 yes;
+
+  managed-keys-directory "/var/named/dynamic";
+
+  pid-file "/run/named/named.pid";
+  session-keyfile "/run/named/session.key";
+};
+
+logging {
+  channel default_debug {
+    file "data/named.run";
+    severity dynamic;
+  };
+};
+
+zone "." IN {
+  type hint;
+  file "named.ca";
+};
+
+########### Add what's between these comments ###########
+zone "{{ dns.clusterid }}.{{ dns.domain }}" IN {
+  type	master;
+  file	"/config/{{ dns_server_zone_name }}.db";
+};
+
+{% if dns.reverse_zone is defined %}
+zone "{{ dns.reverse_zone }}.in-addr.arpa" IN {
+  type	master;
+  file	"/config/{{ dns_server_zone_name }}-reverse.db";
+};
+{% else %}
+zone "{{ bastion.ipaddr.split('.')[2] }}.{{ bastion.ipaddr.split('.')[1] }}.{{ bastion.ipaddr.split('.')[0] }}.in-addr.arpa" IN {
+  type	master;
+  file	"/config/{{ dns_server_zone_name }}-reverse.db";
+};
+{% endif %}
+
+########################################################
+
+include "/etc/named.rfc1912.zones";
+include "/etc/named.root.key";
