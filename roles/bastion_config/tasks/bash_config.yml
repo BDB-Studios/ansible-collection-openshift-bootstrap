@@ -1,0 +1,40 @@
+---
+
+- name: Ensure we have bash completion supported
+  ansible.builtin.dnf:
+    name: "bash-completion"
+    state: present
+
+- name: Ensure our completion scripts are in the global bashrc
+  ansible.builtin.blockinfile:
+    path: /etc/bashrc
+    block: |
+      source <(oc completion bash)
+      source <(kubectl completion bash)
+    insertafter: ""
+  tags:
+    - always
+
+- name: Configure our global OC environment files
+  when: define_oc_env | default(false) | bool
+  tags:
+    - always
+  block:
+    - name: Ensure we have our environment config file
+      ansible.builtin.template:
+        dest: "/root/.oc_env.sh"
+        src: ./templates/oc_env.sh.j2
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Ensure that we source our env vars in our .bashrc
+      ansible.builtin.lineinfile:
+        path: /root/.bashrc
+        line: "source /root/.oc_env.sh"
+        search_string: "source /root/.oc_env.sh"
+        insertafter: EOF
+        state: present
+        backup: true
+
+...
