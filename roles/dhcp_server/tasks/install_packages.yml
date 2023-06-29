@@ -1,0 +1,11 @@
+---
+
+- name: Remove DHCPD packages
+  ansible.builtin.dnf:
+    state: absent
+    name: "{{ dhcpd.packages.absent }}"
+    autoremove: true
+  tags:
+    - dhcpd
+
+...

@@ -1,0 +1,11 @@
+---
+
+dhcpd_image: "bdbstudios/dhcpd:el8-latest"
+
+dhcpd:
+  packages:
+    absent:
+      - "dhcp-server"
+  home: /opt/dhcpd
+  image_name: "{{ dhcpd_image }}"
+  service: "dhcpd"

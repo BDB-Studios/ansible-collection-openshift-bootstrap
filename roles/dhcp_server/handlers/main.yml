@@ -1,0 +1,21 @@
+---
+
+- name: Restart Dhcpd Service
+  ansible.builtin.systemd:
+    name: "{{ dhcpd.service }}"
+    state: restarted
+    daemon_reload: true
+
+- name: Enable and Start Dhcpd Service
+  ansible.builtin.systemd:
+    name: "{{ dhcpd.service }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Reload Firewall
+  ansible.builtin.command:
+    cmd: "firewall-cmd --reload"
+  failed_when: false
+  changed_when: true
+...
