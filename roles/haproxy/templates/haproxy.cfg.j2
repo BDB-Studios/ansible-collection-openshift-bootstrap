@@ -1,0 +1,145 @@
+global
+    log         127.0.0.1:{{ haproxy.logging_port | default(514) }} local0 debug
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn     4000
+    user        haproxy
+    group       haproxy
+    daemon
+
+    stats socket /var/lib/haproxy/stats
+defaults
+    mode                    tcp
+    log                     global
+    option                  httplog
+    option                  dontlognull
+    option http-server-close
+    option forwardfor       except 127.0.0.0/8
+    option                  redispatch
+    retries                 3
+    timeout http-request    10s
+    timeout queue           1m
+    timeout connect         10s
+    timeout client          4h
+    timeout server          4h
+    timeout http-keep-alive 10s
+    timeout check           10s
+    maxconn                 3000
+
+#---------------------------------------------------------------------
+
+listen stats
+    bind :9000
+    mode http
+    stats enable
+    stats uri /
+    monitor-uri /healthz
+
+
+frontend openshift-api-server
+    bind *:6443
+    default_backend openshift-api-server
+    option tcplog
+
+backend openshift-api-server
+    balance source
+{% if bootstrap is defined and openshift_running not defined %}
+  {% for b in bootstrap %}
+    server {{ b.name | lower }} {{ b.ipaddr }}:6443 check
+  {% endfor %}
+{% endif %}
+
+{% for c in control_planes %}
+    server {{ c.name | lower }} {{ c.ipaddr }}:6443 check
+{% endfor %}
+
+frontend machine-config-server
+    bind *:22623
+    default_backend machine-config-server
+    option tcplog
+
+backend machine-config-server
+    balance source
+{% if bootstrap is defined and openshift_running not defined %}
+  {% for b in bootstrap %}
+    server {{ b.name | lower }} {{ b.ipaddr }}:22623 check
+  {% endfor %}
+{% endif %}
+
+{% for c in control_planes %}
+    server {{ c.name | lower }} {{ c.ipaddr }}:22623 check
+{% endfor %}
+
+frontend ingress-http
+    bind *:80
+    default_backend ingress-http
+    option tcplog
+
+backend ingress-http
+    balance source
+{% if workers is defined %}
+  {% for w in workers %}
+    server {{ w.name | lower }}-http-router{{ loop.index0 }} {{ w.ipaddr }}:80 check
+  {% endfor %}
+{% else %}
+  {% for c in control_planes %}
+    server {{ c.name | lower }}-http-router{{ loop.index0 }} {{ c.ipaddr }}:80 check
+  {% endfor %}
+{% endif %}
+
+frontend ingress-https
+    bind *:443
+    default_backend ingress-https
+    option tcplog
+
+backend ingress-https
+    balance source
+{% if workers is defined %}
+  {% for w in workers %}
+    server {{ w.name | lower }}-https-router{{ loop.index0 }} {{ w.ipaddr }}:443 check
+  {% endfor %}
+{% else %}
+  {% for c in control_planes %}
+    server {{ c.name | lower }}-https-router{{ loop.index0 }} {{ c.ipaddr }}:443 check
+  {% endfor %}
+{% endif %}
+
+frontend ingress-highports
+  bind *:30000-32767
+  default_backend ingress-highports
+  option tcplog
+  mode tcp
+
+backend ingress-highports
+  balance source
+
+{% if workers is defined %}
+  {% for w in workers %}
+  server {{ w.name | lower }}-highport-router{{ loop.index0 }} {{ w.ipaddr }}
+  {% endfor %}
+{% else %}
+  {% for c in control_planes %}
+  server {{ c.name | lower }}-highport-router{{ loop.index0 }} {{ c.ipaddr }}
+  {% endfor %}
+{% endif %}
+
+{% if using_vault is defined and using_vault %}
+
+frontend ingress-vault
+  bind *:8200
+  default_backend ingress-vault
+  option tcplog
+  mode tcp
+
+backend ingress-vault
+  mode tcp
+  balance source
+  option httpchk GET /v1/sys/health
+  http-check expect status 200
+  option tcplog
+  option ssl-hello-chk
+
+{% for v in vault %}
+  server {{ v.name | lower }}-vault-router{{ loop.index0 }} {{ v.ipaddr }}:8200 check no-check-ssl verify none
+{% endfor %}
+{% endif %}

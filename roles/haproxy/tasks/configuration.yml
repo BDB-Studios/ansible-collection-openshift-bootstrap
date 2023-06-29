@@ -1,0 +1,98 @@
+---
+
+- name: Ensure our container config directory exists
+  ansible.builtin.file:
+    state: directory
+    path: "{{ haproxy.home }}/config"
+    owner: root
+    group: root
+    mode: 0755
+  tags:
+    - haproxy
+
+- name: Create our haproxy configuration file
+  ansible.builtin.template:
+    dest: "{{ haproxy.home }}/config/haproxy.cfg"
+    src: templates/haproxy.cfg.j2
+    owner: root
+    group: root
+    mode: 0644
+  tags:
+    - haproxy
+
+- name: Ensure we have our podman image
+  containers.podman.podman_image:
+    name: "{{ haproxy.image_name }}"
+  tags:
+    - haproxy
+
+- name: Create our podman container
+  containers.podman.podman_container:
+    name: "{{ haproxy.service }}"
+    image: "{{ haproxy.image_name }}"
+    state: present
+    recreate: true
+    network_mode: host
+    privileged: true
+    volume: "{{ haproxy.home }}/config:/config:z"
+    generate_systemd:
+      path: /etc/systemd/system/
+      new: true
+      restart_policy: always
+      time: 120
+      names: true
+      container_prefix: ""
+      separator: ""
+  tags:
+    - haproxy
+  notify: Enable and Start Haproxy
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Allow haproxy to be connected to from anywhere
+  ansible.builtin.command:
+    cmd: "setsebool -P haproxy_connect_any 1"
+  changed_when: true
+  failed_when: false
+  tags:
+    - haproxy
+
+- name: Allow haproxy to use our custom ports
+  ansible.builtin.command:
+    cmd: "semanage port  -a {{ port }} -t http_port_t -p tcp"
+  loop: "{{ haproxy.ports }}"
+  loop_control:
+    loop_var: port
+  changed_when: true
+  failed_when: false
+  tags:
+    - haproxy
+
+- name: Create our firewall rules
+  ansible.posix.firewalld:
+    state: enabled
+    permanent: true
+    port: "{{ port }}/tcp"
+  loop: "{{ haproxy.ports }}"
+  loop_control:
+    loop_var: port
+  notify:
+    - Reload firewall
+  tags:
+    - haproxy
+
+- name: Create our firewall rules
+  ansible.posix.firewalld:
+    state: enabled
+    permanent: true
+    service: "{{ service }}"
+  loop: "{{ haproxy.services }}"
+  loop_control:
+    loop_var: service
+  notify:
+    - Reload firewall
+  tags:
+    - haproxy
+
+...
