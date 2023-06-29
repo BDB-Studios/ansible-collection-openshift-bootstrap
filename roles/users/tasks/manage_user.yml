@@ -1,0 +1,58 @@
+---
+
+- name: Add User
+  when: user.state | default('present') == "present"
+  no_log: true
+  block:
+    - name: Create User Group
+      ansible.builtin.group:
+        name: "{{ user.group | default(user.name) }}"
+        state: present
+
+    - name: "Create User {{ user.name }}"
+      ansible.builtin.user:
+        name: "{{ user.name }}"
+        group: "{{ user.group | default(user.name) }}"
+        system: "{{ user.system | default(false) }}"
+        uid: "{{ user.uid | default(omit) }}"
+        groups: "{{ user.groups | default(omit) }}"
+        append: "{{ user.append_groups | default(false) }}"
+        shell: "{{ user.shell | default('/bin/bash') }}"
+        comment: "{{ user.comment | default(omit) }}"
+        create_home: "{{ user.create_home | default(true) }}"
+        home: "{{ user.home_dir | default(omit) }}"
+
+    - name: Set User Password if provided # noqa: jinja[invalid]
+      when: user.password is defined
+      ansible.builtin.user:
+        name: "{{ user.name }}"
+        state: present
+        password: "{{ user.password | password_hash | default('*') }}"
+
+    - name: Manage SSH keys if defined
+      when: user.ssh_keys is defined
+      ansible.posix.authorized_key:
+        user: "{{ user.name }}"
+        state: "{{ ssh_key.state | default('present') }}"
+        key: "{{ ssh_key.key }}"
+      loop: "{{ user.ssh_keys }}"
+      loop_control:
+        loop_var: ssh_key
+
+    - name: Create sudoers file if defined
+      when: user.sudoers is defined
+      community.general.sudoers:
+        commands: "{{ user.sudoers.commands | default(['ALL']) }}"
+        state: "{{ user.sudoers.state | default('present') }}"
+        name: "{{ user.name }}"
+        user: "{{ user.name }}"
+        nopassword: "{{ user.sudoers.nopassword | default(false) }}"
+
+- name: "Remove User {{ user.name }}"
+  when: user.state | default('present') == "absent"
+  ansible.builtin.user:
+    name: "{{ user.name }}"
+    state: absent
+    force: "{{ user.force_delete | default(true) }}"
+
+...
