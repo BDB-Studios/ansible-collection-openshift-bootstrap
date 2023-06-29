@@ -1,0 +1,27 @@
+---
+
+- name: Ensure we have our extra repositories installed
+  ansible.builtin.dnf:
+    name: "{{ dependencies.repos }}"
+    state: present
+    disable_gpg_check: true
+    update_cache: true
+  when: ansible_distribution != "Fedora"
+
+- name: Install defined packages
+  ansible.builtin.dnf:
+    name: "{{ dependencies.packages }}"
+    state: present
+
+- name: Log into our podman/docker registries if credentials are defined
+  when: podman_registries is defined
+  containers.podman.podman_login:
+    username: "{{ registry.username }}"
+    password: "{{ registry.password }}"
+    registry: "{{ registry.registry }}"
+  loop: "{{ podman_registries }}"
+  no_log: true
+  loop_control:
+    loop_var: registry
+
+...

@@ -1,0 +1,18 @@
+---
+
+dependencies:
+  packages:
+    - podman
+    - podman-compose
+    - jq
+    - python3-jmespath
+    - bash-completion
+    - tar
+    - zip
+    - unzip
+    - logrotate
+    - wireshark
+  repos:
+    - "https://dl.fedoraproject.org/pub/epel/epel-release-latest-{{ ansible_distribution_major_version }}.noarch.rpm"
+
+...
