@@ -1,0 +1,62 @@
+---
+
+- name: Ensure our export directories exist
+  ansible.builtin.file:
+    state: directory
+    path: "{{ nfs.base_dir }}/{{ subdirectory }}"
+    owner: root
+    group: root
+    mode: 0777
+  loop: "{{ nfs.export_directories }}"
+  loop_control:
+    loop_var: subdirectory
+  tags:
+    - nfs
+
+- name: Ensure that our directories are in our exports file
+  ansible.builtin.lineinfile:
+    path: /etc/exports
+    state: present
+    search_string: "{{ item[0] }}/{{ item[1] }} *(rw,no_root_squash,no_subtree_check,insecure)"
+    line: "{{ item[0] }}/{{ item[1] }} *(rw,no_root_squash,no_subtree_check,insecure)"
+  with_nested:
+    - "{{ nfs.base_dir }}"
+    - "{{ nfs.export_directories }}"
+  tags:
+    - nfs
+
+- name: Enable our firewall
+  ansible.posix.firewalld:
+    state: enabled
+    permanent: true
+    service: "{{ service }}"
+  loop:
+    - nfs
+    - nfs3
+    - mountd
+    - rpc-bind
+  loop_control:
+    loop_var: service
+  notify:
+    - Reload Firewall
+    - Restart nfs server
+  tags:
+    - nfs
+
+- name: Re-export our share
+  ansible.builtin.command:
+    cmd: "exportfs -rav"
+  failed_when: false
+  changed_when: true
+  tags:
+    - nfs
+
+- name: Configure our selinux permissions
+  ansible.builtin.command:
+    cmd: "setsebool -P nfs_export_all_rw 1"
+  failed_when: false
+  changed_when: true
+  tags:
+    - nfs
+
+...

@@ -1,0 +1,29 @@
+---
+
+- name: Enable nfs server
+  ansible.builtin.systemd:
+    name: nfs-server
+    enabled: true
+
+- name: Restart nfs server
+  ansible.builtin.systemd:
+    name: nfs-server
+    state: restarted
+    daemon_reload: true
+
+- name: Enable rpcbind
+  ansible.builtin.systemd:
+    name: rpcbind
+    enabled: true
+
+- name: Restart rpcbind
+  ansible.builtin.systemd:
+    name: rpcbind
+    state: restarted
+    daemon_reload: true
+
+- name: Reload Firewall
+  ansible.builtin.command:
+    cmd: "firewall-cmd --reload"
+  changed_when: true
+  failed_when: false
