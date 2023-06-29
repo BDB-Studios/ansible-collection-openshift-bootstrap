@@ -1,0 +1,17 @@
+---
+
+skip_list:
+  - yaml[line-length]
+  - jinja[spacing]
+  - name[template]
+  - yaml[comments]
+  - yaml[octal-values]
+  - template-instead-of-copy
+  - no-tabs
+
+exclude_paths:
+  - .github
+
+offline: false
+
+...
