@@ -1,10 +1,10 @@
-bdbstudios.openshift_bootstrap.dhcpd_server
+bdbstudios.openshift_bootstrap.haproxy
 =========
 
-Installs the Bind DNS server on the target bastion machine.
+Configures a round robin haproxy that listens on port 80, 443, 6443 and 22623.
 
-Creates forward and reverse domain entries for the openshift domain. Will create entries for bastion, workers, controls_planes,
-bootstrap and optionally the nfs_server.
+Ports 80 and 443 allow the application to login, 6443 is for the api and 22623 for machine config.
+
 
 Requirements
 ------------
@@ -15,23 +15,15 @@ Role Variables
 --------------
 
 ```yaml
-named_image: "bdbstudios/named:el8-latest"
+dhcpd_image: "bdbstudios/haproxy:el8-latest"
 
-bind:
-  home: /opt/named
-  service: named
-  image_name: "{{ named_image }}"
+dhcpd:
   packages:
-    present:
-      - bind-utils
     absent:
-      - bind
-  user:
-    name: named
-    uid: 25
-    gid: 25
-    home: "/opt/named"
-    shell: "/bin/false"
+      - "dhcp-server"
+  home: /opt/dhcpd
+  image_name: "{{ dhcpd_image }}"
+  service: "dhcpd"
 
 ```
 
@@ -143,7 +135,7 @@ Example Playbook
   hosts: "all"
   become: true
   roles:
-    - role: bdbstudios.openshift_bootstrap.dhcpd_server
+    - role: bdbstudios.openshift_bootstrap.haproxy
       tags:
         - always
 ...

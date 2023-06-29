@@ -1,0 +1,17 @@
+---
+
+- name: Ensure that our packages are not installed
+  ansible.builtin.dnf:
+    name: "{{ haproxy.removed_packages }}"
+    state: absent
+  tags:
+    - haproxy
+
+- name: Ensure that our required packages are installed
+  ansible.builtin.dnf:
+    name: "{{ haproxy.packages }}"
+    state: present
+  tags:
+    - haproxy
+
+...

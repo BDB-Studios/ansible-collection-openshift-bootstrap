@@ -1,0 +1,23 @@
+---
+
+haproxy_image: "bdbstudios/haproxy:el8-latest"
+
+haproxy:
+  home: /opt/haproxy
+  packages:
+    - rsyslog
+  removed_packages:
+    - haproxy
+  ports:
+    - 6443
+    - 22623
+    - 32700
+    - "30000-32767"
+  services:
+    - http
+    - https
+  service: haproxy
+  image_name: "{{ haproxy_image }}"
+  logging_port: 8514
+
+...
