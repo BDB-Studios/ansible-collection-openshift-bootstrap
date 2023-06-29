@@ -1,0 +1,56 @@
+$TTL 1W
+@	IN	SOA	ns1.{{ dns.clusterid }}.{{ dns.domain | lower }}.	root (
+      {{ dns_server_zone_serial }}	; serial
+      3H		; refresh (3 hours)
+      30M		; retry (30 minutes)
+      2W		; expiry (2 weeks)
+      1W )		; minimum (1 week)
+  IN	NS	ns1.{{ dns.clusterid }}.{{ dns.domain | lower }}.
+;
+; syntax is "last octet" and the host must have fqdn with trailing dot
+{{ bastion.ipaddr.split('.')[3] }}       IN      PTR     {{ bastion.name }}.{{ dns.clusterid }}.{{ dns.domain }}.
+;
+{%- if nfs_server is defined %}
+{{ nfs_server.ipaddr.split('.')[3] }}   IN      PTR     {{ nfs_server.name }}.{{ dns.clusterid }}.{{ dns.domain }}.
+{%- endif %}
+
+{% for m in control_planes %}
+{{ m.ipaddr.split('.')[3] }}	IN	PTR	{{ m.name | lower }}.{{ dns.clusterid }}.{{ dns.domain | lower }}.
+{% endfor %}
+;
+
+{% if bootstrap is defined %}
+{% for b in bootstrap %}
+{{ b.ipaddr.split('.')[3] }}	IN	PTR	{{ b.name | lower  }}.{{ dns.clusterid }}.{{ dns.domain | lower }}.
+;
+{% endfor %}
+{% endif %}
+
+{% if dns.lb_ipaddr is not defined or dns.lb_ipaddr == bastion.ipaddr %}
+{{ bastion.ipaddr.split('.')[3] }}	IN	PTR	api.{{ dns.clusterid }}.{{ dns.domain | lower }}.
+{{ bastion.ipaddr.split('.')[3] }}	IN	PTR	api-int.{{ dns.clusterid }}.{{ dns.domain | lower }}.
+{% endif %}
+;
+
+{% if workers is defined %}
+{% for w in workers %}
+{{ w.ipaddr.split('.')[3] }}	IN	PTR	{{ w.name | lower }}.{{ dns.clusterid }}.{{ dns.domain | lower }}.
+{% endfor %}
+{% endif %}
+;
+
+{% if other is defined %}
+{% for o in other %}
+{{ o.ipaddr.split('.')[3] }}	IN	PTR	{{ o.name }}.{{ dns.clusterid }}.{{ dns.domain }}.
+{% endfor %}
+{% endif %}
+
+{% if using_vault is defined and using_vault %}
+{% for v in vault %}
+{{ v.ipaddr.split('.')[3] }}	IN	PTR	{{ v.name }}.{{ dns.clusterid }}.{{ dns.domain }}.
+{% endfor %}
+; haproxy address
+{{ bastion.ipaddr.split('.')[3] }}       IN      PTR     vault.{{ dns.clusterid }}.{{ dns.domain }}
+{% endif %}
+
+;EOF

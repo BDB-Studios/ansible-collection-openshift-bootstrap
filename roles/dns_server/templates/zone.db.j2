@@ -1,0 +1,79 @@
+$TTL 1W
+@	IN	SOA	ns1.{{ dns.clusterid }}.{{ dns.domain | lower }}.	root (
+      {{ dns_server_zone_serial }}	; serial
+      3H		; refresh (3 hours)
+      30M		; retry (30 minutes)
+      2W		; expiry (2 weeks)
+      1W )		; minimum (1 week)
+  IN	NS	ns1.{{ dns.clusterid }}.{{ dns.domain | lower }}.
+  IN	MX 10	smtp.{{ dns.clusterid }}.{{ dns.domain | lower }}.
+
+ns1	IN	A	{{ bastion.ipaddr }}
+smtp	IN	A	{{ bastion.ipaddr }}
+{{ bastion.name | lower }}	IN	A	{{ bastion.ipaddr }}
+
+{% if nfs_server is defined %}
+{{ nfs_server.name | lower }}	IN	A	{{ nfs_server.ipaddr }}
+{% else %}
+nfs                           IN  A {{ bastion.ipaddr }}
+{% endif %}
+
+{%if high_availability is defined %}
+; Create entry for the bastion hosts
+{% for h in high_availability.bastionnodes %}
+{{ h.name | lower }}		IN	A	{{ h.ipaddr }}
+{% endfor %}
+{% endif %}
+
+; The api points to the IP of your load balancer
+{% if dns.lb_ipaddr is defined %}
+api		    IN	A	{{ dns.lb_ipaddr }}
+api-int		IN	A	{{ dns.lb_ipaddr }}
+
+; The wildcard also points to the load balancer
+*.apps		IN	A	{{ dns.lb_ipaddr }}
+{% else %}
+api			IN	A	{{ bastion.ipaddr }}
+api-int		IN	A	{{ bastion.ipaddr }}
+;
+; The wildcard also points to the load balancer
+*.apps		IN	A	{{ bastion.ipaddr }}
+{% endif %}
+;
+
+{% if bootstrap is defined %}
+{% for b in bootstrap %}
+; Create entry for the bootstrap host
+{{ b.name | lower }}	IN	A	{{ b.ipaddr }}
+;
+{% endfor %}
+{% endif %}
+
+; Create entries for the control plane hosts
+{% for m in control_planes %}
+{{ m.name | lower }}		IN	A	{{ m.ipaddr }}
+{% endfor %}
+;
+
+; Create entries for the worker hosts
+{% if workers is defined %}
+{% for w in workers %}
+{{ w.name | lower }}		IN	A	{{ w.ipaddr }}
+{% endfor %}
+{% endif %}
+
+{% if other is defined %}
+; Create entries for the other hosts
+{% for o in other %}
+{{ o.name }}		IN	A	{{ o.ipaddr }}
+{% endfor %}
+{% endif %}
+
+{% if using_vault is defined and using_vault %}
+; Create entries for vault instances
+{% for v in vault %}
+{{ v.name }}		IN	A	{{ v.ipaddr }}
+{% endfor %}
+vault           IN  A {{ bastion.ipaddr }}
+{% endif %}
+;EOF
