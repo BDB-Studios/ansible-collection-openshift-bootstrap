@@ -1,0 +1,81 @@
+authoritative;
+ddns-update-style interim;
+default-lease-time 14400;
+max-lease-time 14400;
+allow booting;
+allow bootp;
+
+# required for UEFI support
+option rfc3442-classless-static-routes code 121 = array of integer 8;
+option ms-classless-static-routes code 249 = array of integer 8;
+option space pxelinux;
+option pxelinux.magic code 208 = string;
+option pxelinux.configfile code 209 = text;
+option pxelinux.pathprefix code 210 = text;
+option pxelinux.reboottime code 211 = unsigned integer 32;
+option architecture-type code 93 = unsigned integer 16;
+
+{% for vlan in vlans %}
+
+subnet {{ vlan.network }} netmask {{ vlan.subnet_mask }} {
+    interface                       {{ vlan.networkifacename }};
+    option routers                  {{ vlan.router }};
+    option broadcast-address        {{ vlan.broadcast }};
+    option subnet-mask              {{ vlan.subnet_mask }};
+    option domain-name-servers      {{ vlan.forwarder }};
+    # option ntp-servers              {{ networking_defaults.ntp | join(',') }};
+    option domain-name              "{{ dns.clusterid + '.' + dns.domain }}";
+    option domain-search            "{{ dns.clusterid + '.' + dns.domain }}", "{{ dns.domain }}";
+    option tftp-server-name         "{{ vlan.forwarder }}";
+
+
+    class "pxeclients" {
+      match if substring (option vendor-class-identifier, 0, 9) = "PXEClient";
+      next-server {{ vlan.ipaddr }};
+
+      if option architecture-type = 00:07 {
+        filename "grub2/shimx64.efi";
+      } else if option architecture-type = 00:08 {
+        filename "grub2/shimx64.efi";
+      } else if option architecture-type = 00:09 {
+        filename "grub2/shimx64.efi";
+      } else {
+        filename "pxelinux.0";
+      }
+    }
+
+    group "openshift" {
+      # Static entries
+{% if vlan.bootstrap is defined %}
+{% for b in vlan.bootstrap %}
+      host {{ b.name }} {
+        hardware ethernet {{ b.macaddr }};
+        fixed-address {{ b.ipaddr }};
+      }
+{% endfor %}
+{% endif %}
+{% for c in vlan.control_planes %}
+      host {{ c.name }} {
+        hardware ethernet {{ c.macaddr }};
+        fixed-address {{ c.ipaddr }};
+      }
+{% endfor %}
+{% if vlan.workers is defined %}
+{% for w in vlan.workers %}
+      host {{ w.name }} {
+        hardware ethernet {{ w.macaddr }};
+        fixed-address {{ w.ipaddr }};
+      }
+{% endfor %}
+{% endif %}
+
+      # this will not give out addresses to hosts not listed above
+      deny unknown-clients;
+
+      # this is PXE specific and needs to be declared here for non eufi
+      # filename "pxelinux.0";
+      next-server {{ vlan.ipaddr }};
+    }
+}
+
+{% endfor %}

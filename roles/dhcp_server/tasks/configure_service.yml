@@ -1,0 +1,66 @@
+---
+
+- name: Ensure we have our dhcpd home directory
+  ansible.builtin.file:
+    state: directory
+    path: "{{ dhcpd.home }}/config"
+    owner: root
+    group: root
+    mode: 0755
+  tags:
+    - dhcpd
+
+- name: Create DHCPD config file
+  when: not vlans is defined
+  ansible.builtin.template:
+    dest: "{{ dhcpd.home }}/config/dhcpd.conf"
+    src: dhcpd.conf.j2
+    mode: 0644
+    owner: root
+    group: root
+  notify:
+    - Restart Dhcpd Service
+  tags:
+    - dhcpd
+
+- name: Create DHCPD config file
+  when: vlans is defined
+  ansible.builtin.template:
+    dest: "{{ dhcpd.home }}/config/dhcpd.conf"
+    src: dhcpd-vlans.conf.j2
+    mode: 0644
+    owner: root
+    group: root
+  notify:
+    - Restart Dhcpd Service
+  tags:
+    - dhcpd
+
+- name: Ensure we have our podman image
+  containers.podman.podman_image:
+    name: "{{ dhcpd.image_name }}"
+  tags:
+    - dns
+
+- name: Create our podman container
+  containers.podman.podman_container:
+    name: "{{ dhcpd.service }}"
+    image: "{{ dhcpd.image_name }}"
+    state: present
+    recreate: true
+    network_mode: host
+    privileged: true
+    volume: "{{ dhcpd.home }}/config:/config:z"
+    generate_systemd:
+      path: /etc/systemd/system/
+      new: true
+      restart_policy: always
+      time: 120
+      names: true
+      container_prefix: ""
+      separator: ""
+  tags:
+    - dns
+  notify: Enable and Start Dhcpd Service
+
+...

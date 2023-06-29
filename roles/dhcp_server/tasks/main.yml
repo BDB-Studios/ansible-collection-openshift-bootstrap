@@ -1,0 +1,42 @@
+---
+
+- name: Ensure that our DHCPD packages are installed
+  ansible.builtin.include_tasks: install_packages.yml
+  tags:
+    - dhcpd
+
+- name: Configure DHCPD server
+  ansible.builtin.include_tasks: configure_service.yml
+  tags:
+    - dhcpd
+
+- name: Enable firewall services
+  ansible.posix.firewalld:
+    state: enabled
+    service: "{{ service_name }}"
+    permanent: true
+  loop:
+    - dhcp
+  loop_control:
+    loop_var: service_name
+  notify:
+    - Reload Firewall
+  tags:
+    - dhcpd
+
+- name: Enable firewall ports
+  ansible.posix.firewalld:
+    state: enabled
+    port: "{{ port }}"
+    permanent: true
+  loop:
+    - "53/tcp"
+    - "53/udp"
+  loop_control:
+    loop_var: port
+  notify:
+    - Reload Firewall
+  tags:
+    - dhcpd
+
+...
