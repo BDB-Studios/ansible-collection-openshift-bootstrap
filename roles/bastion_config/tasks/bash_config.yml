@@ -15,27 +15,26 @@
   tags:
     - always
 
-- name: Ensure we have our environment config file
+- name: Configure our global OC environment files
   when: define_oc_env | default(false) | bool
-  ansible.builtin.template:
-    dest: "/root/.oc_env.sh"
-    src: ./templates/oc_env.sh.j2
-    owner: root
-    group: root
-    mode: 0644
   tags:
     - always
+  block:
+    - name: Ensure we have our environment config file
+      ansible.builtin.template:
+        dest: "/root/.oc_env.sh"
+        src: ./templates/oc_env.sh.j2
+        owner: root
+        group: root
+        mode: 0644
 
-- name: Ensure that we source our env vars in our .bashrc
-  when: define_oc_env | default(false) | bool
-  ansible.builtin.lineinfile:
-    path: /root/.bashrc
-    line: "source /root/.oc_env.sh"
-    search_string: "source /root/.oc_env.sh"
-    insertafter: EOF
-    state: present
-    backup: true
-  tags:
-    - always
+    - name: Ensure that we source our env vars in our .bashrc
+      ansible.builtin.lineinfile:
+        path: /root/.bashrc
+        line: "source /root/.oc_env.sh"
+        search_string: "source /root/.oc_env.sh"
+        insertafter: EOF
+        state: present
+        backup: true
 
 ...
