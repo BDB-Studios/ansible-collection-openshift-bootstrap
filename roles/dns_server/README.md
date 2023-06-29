@@ -15,15 +15,23 @@ Role Variables
 --------------
 
 ```yaml
-dhcpd_image: "bdbstudios/dhcpd:el8-latest"
+named_image: "bdbstudios/named:el8-latest"
 
-dhcpd:
+bind:
+  home: /opt/named
+  service: named
+  image_name: "{{ named_image }}"
   packages:
+    present:
+      - bind-utils
     absent:
-      - "dhcp-server"
-  home: /opt/dhcpd
-  image_name: "{{ dhcpd_image }}"
-  service: "dhcpd"
+      - bind
+  user:
+    name: named
+    uid: 25
+    gid: 25
+    home: "/opt/named"
+    shell: "/bin/false"
 
 ```
 
