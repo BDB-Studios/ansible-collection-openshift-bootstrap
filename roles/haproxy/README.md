@@ -131,7 +131,7 @@ Example Playbook
 ```yaml
 ---
 
-- name: Install and our dhcpd server
+- name: Install and our haproxy server
   hosts: "all"
   become: true
   roles:

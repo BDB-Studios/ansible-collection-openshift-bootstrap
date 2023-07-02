@@ -1,0 +1,23 @@
+---
+
+- name: Ensure our flagged packages are removed
+  ansible.builtin.dnf:
+    name: "{{ proxy.packages.absent }}"
+    state: absent
+    autoremove: true
+
+- name: Ensure our packages are installed
+  ansible.builtin.dnf:
+    name: "{{ proxy.packages.present }}"
+    state: present
+  tags:
+    - squid
+
+- name: Ensure our pip packages are installed
+  ansible.builtin.pip:
+    name: "{{ proxy.pip_packages }}"
+    state: present
+  tags:
+    - squid
+
+...

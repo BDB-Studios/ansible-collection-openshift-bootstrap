@@ -1,0 +1,22 @@
+---
+
+- name: Enable and Start Proxy
+  ansible.builtin.systemd:
+    name: "{{ proxy.service }}"
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Restart Proxy
+  ansible.builtin.systemd:
+    name: "{{ proxy.service }}"
+    state: restarted
+    daemon_reload: true
+
+- name: Reload Firewall
+  ansible.builtin.command:
+    cmd: firewall-cmd --reload
+  failed_when: false
+  changed_when: true
+
+...
