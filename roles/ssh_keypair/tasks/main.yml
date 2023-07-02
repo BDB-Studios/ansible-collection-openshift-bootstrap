@@ -1,0 +1,48 @@
+---
+
+- name: Ensure we have a .ssh directory
+  ansible.builtin.file:
+    path: /root/.ssh
+    owner: root
+    group: root
+    mode: 0644
+    state: directory
+  tags:
+    - always
+
+- name: Copy our pre-generated ssh keys into our directory
+  when:
+    - coreos_ssh_public_key is defined
+    - coreos_ssh_key is defined
+  tags:
+    - always
+  block:
+    - name: Create our ssh private key # noqa template-instead-of-copy
+      ansible.builtin.copy:
+        dest: /root/.ssh/id_rsa
+        content: "{{ coreos_ssh_key }}"
+        owner: root
+        group: root
+        mode: 0600
+
+    - name: Create our ssh public key # noqa template-instead-of-copy
+      ansible.builtin.copy:
+        dest: /root/.ssh/id_rsa.pub
+        content: "{{ coreos_ssh_public_key }}"
+        owner: root
+        group: root
+        mode: 0600
+
+- name: Generate a SSH keypair for openshift if we do not have one defined
+  when:
+    - coreos_ssh_public_key is not defined
+    - coreos_ssh_key is not defined
+  tags:
+    - always
+  block:
+    - name: Generate a 4096B keypair
+      community.crypto.openssh_keypair:
+        path: /root/.ssh/id_rsa
+        size: 4096
+
+...
