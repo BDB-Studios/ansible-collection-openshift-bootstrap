@@ -1,0 +1,27 @@
+---
+
+squid_image: "bdbstudios/squid:el8-latest"
+
+proxy:
+  packages:
+    present:
+      - "httpd-tools"
+    absent:
+      - squid
+  pip_packages:
+    - passlib
+  service: squid
+  port: "{{ proxy_port | default('3128') }}"
+  credentials:
+    user: "{{ proxy_user | default('coreos') }}"
+    password: "{{ proxy_password | default('coreospassword') }}"
+  home: "/opt/squid"
+  user:
+    name: squid
+    uid: 23
+    gid: 23
+    home: "/opt/squid"
+    shell: "/sbin/nologin"
+  image_name: "{{ squid_image }}"
+
+...

@@ -1,0 +1,11 @@
+#! /bin/bash
+{% if use_proxy_authentication | bool == true  -%}
+  {% set proxy_prefix= proxy_user | default('coreos') + ":" + proxy_password | default('coreospassword') + "@" -%}
+{% else -%}
+    {% set proxy_prefix="" -%}
+{% endif -%}
+
+
+export HTTP_PROXY="http://{{ proxy_prefix }}{{ bastion.name }}.{{ dns.clusterid }}.{{ dns.domain }}:{{ proxy.port }}"
+export HTTPS_PROXY="http://{{ proxy_prefix }}{{ bastion.name }}.{{ dns.clusterid }}.{{ dns.domain }}:{{ proxy.port }}"
+export NO_PROXY="{{ no_proxy_base }},{{ no_proxy_lans }},{{ no_proxy_networks }}"

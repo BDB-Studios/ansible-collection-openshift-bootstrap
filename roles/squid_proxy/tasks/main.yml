@@ -1,0 +1,44 @@
+---
+
+- name: Ensure our packages are installed
+  ansible.builtin.include_tasks: packages.yml
+  tags:
+    - squid
+
+- name: Ensure we have a proxy group
+  ansible.builtin.group:
+    name: "{{ proxy.user.name }}"
+    gid: "{{ proxy.user.gid }}"
+  tags:
+    - squid
+
+- name: Ensure our proxy user exists
+  ansible.builtin.user:
+    name: "{{ proxy.user.name }}"
+    home: "{{ proxy.user.home }}"
+    uid: "{{ proxy.user.uid }}"
+    group: "{{ proxy.user.name }}"
+    shell: "{{ proxy.user.shell }}"
+  tags:
+    - squid
+
+- name: Configure squid proxy
+  ansible.builtin.include_tasks: configure_proxy.yml
+  tags:
+    - squid
+
+- name: Enable our firewall
+  ansible.posix.firewalld:
+    state: enabled
+    permanent: true
+    port: "{{ port }}"
+  loop:
+    - "{{ proxy.port }}/tcp"
+  loop_control:
+    loop_var: port
+  notify:
+    - Reload Firewall
+  tags:
+    - squid
+
+...

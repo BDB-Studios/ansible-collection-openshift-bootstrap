@@ -1,0 +1,74 @@
+---
+
+- name: Ensure our config directories exist
+  ansible.builtin.file:
+    path: "{{ proxy.home }}/config"
+    owner: "{{ proxy.user.name }}"
+    group: "{{ proxy.user.name }}"
+    mode: 0755
+    recurse: true
+  tags:
+    - squid
+
+- name: Ensure the squid config file exists
+  ansible.builtin.template:
+    dest: "{{ proxy.home }}/config/squid.conf"
+    src: squid.conf.j2
+    owner: "{{ proxy.user.name }}"
+    group: "{{ proxy.user.name }}"
+    mode: 0644
+  notify: Restart Proxy
+  tags:
+    - squid
+
+- name: Ensure we have a htpasswd file
+  community.general.htpasswd:
+    path: "{{ proxy.home }}/config/passwd"
+    name: "{{ proxy.credentials.user }}"
+    password: "{{ proxy.credentials.password }}"
+    owner: "{{ proxy.user.name }}"
+    group: "{{ proxy.user.name }}"
+    mode: 0640
+  notify: Restart Proxy
+  when: use_proxy_authentication| default(true) | bool
+  tags:
+    - squid
+
+- name: Ensure we have our podman image
+  containers.podman.podman_image:
+    name: "{{ proxy.image_name }}"
+  tags:
+    - squid
+
+- name: Ensure we have our proxy settings in a file
+  ansible.builtin.template:
+    dest: /etc/profile.d/proxy.sh
+    src: proxy.sh.j2
+    owner: root
+    group: root
+    mode: 0600
+  tags:
+    - squid
+
+- name: Create our podman container
+  containers.podman.podman_container:
+    name: "{{ proxy.service }}"
+    image: "{{ proxy.image_name }}"
+    state: present
+    recreate: true
+    network_mode: host
+    privileged: true
+    volume: "{{ proxy.home }}/config:/config:z"
+    generate_systemd:
+      path: /etc/systemd/system/
+      new: true
+      restart_policy: always
+      time: 120
+      names: true
+      container_prefix: ""
+      separator: ""
+  tags:
+    - squid
+  notify: Enable and Start Proxy
+
+...
