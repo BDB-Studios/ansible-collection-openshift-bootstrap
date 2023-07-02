@@ -6,7 +6,7 @@ Ansible role to generate a ssh keypair for Openshift CoreOS.
 Requirements
 ------------
 
-None
+Requires `community.crypto` ansible collection
 
 Role Variables
 --------------
