@@ -11,7 +11,7 @@ Also configures a tftp server to distribute core linux files during the PXE boot
 Requirements
 ------------
 
-Ansible galaxy `community.posix` collection
+Ansible galaxy `ansible.posix` and `containers.podman` collections
 
 Role Variables
 --------------

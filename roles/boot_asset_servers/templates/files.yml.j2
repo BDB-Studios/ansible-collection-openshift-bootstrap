@@ -1,0 +1,11 @@
+{% for file in rhcos_files %}
+  - "{{ file }}:/config/rhcos/{{ file | basename }}:ro"
+{% endfor %}
+
+{% for file in pxelinux_files %}
+  - "{{ file }}:/config/pxelinux.cfg/{{ file | basename }}:ro"
+{% endfor %}
+
+{% for file in grub2_files %}
+  - "{{ file }}:/config/grub2/{{ file | basename }}:ro"
+{% endfor %}
