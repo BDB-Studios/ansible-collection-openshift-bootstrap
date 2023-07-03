@@ -1,0 +1,20 @@
+---
+
+- name: Ensure we have a httpd group
+  ansible.builtin.group:
+    name: "{{ httpd.user.name }}"
+    gid: "{{ httpd.user.gid }}"
+  tags:
+    - httpd
+
+- name: Ensure our httpd user exists
+  ansible.builtin.user:
+    name: "{{ httpd.user.name }}"
+    home: "{{ httpd.user.home }}"
+    uid: "{{ httpd.user.uid }}"
+    group: "{{ httpd.user.name }}"
+    shell: "{{ httpd.user.shell }}"
+  tags:
+    - httpd
+
+...

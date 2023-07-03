@@ -1,0 +1,18 @@
+---
+
+- name: Ensure our flagged packages are removed
+  ansible.builtin.dnf:
+    name: "{{ httpd.packages.absent }}"
+    state: absent
+    autoremove: true
+  tags:
+    - httpd
+
+- name: Install our httpd packages
+  ansible.builtin.dnf:
+    name: "{{ httpd.packages.present }}"
+    state: present
+  tags:
+    - httpd
+
+...

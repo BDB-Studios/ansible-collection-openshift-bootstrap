@@ -17,3 +17,20 @@
   ansible.builtin.include_tasks: tftp_service.yml
   tags:
     - tftpd
+
+- name: Manage HTTPD packages
+  ansible.builtin.include_tasks: httpd_packages.yml
+  tags:
+    - httpd
+
+- name: Manage HTTPD users
+  ansible.builtin.include_tasks: httpd_users.yml
+  tags:
+    - httpd
+
+- name: Configure HTTPD service
+  ansible.builtin.include_tasks: httpd_service.yml
+  tags:
+    - httpd
+
+...

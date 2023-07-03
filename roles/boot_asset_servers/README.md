@@ -38,6 +38,27 @@ tftpd:
     shell: /sbin/nologin
   image_name: "{{ tfptd_image }}"
 
+httpd_image: "bdbstudios/httpd:el8-latest"
+httpd:
+  packages:
+    present: []
+    absent:
+      - httpd
+      - nginx
+  ports:
+    original: 80
+    new: 8080
+  directories:
+    - /var/www/html/rhcos
+  service: httpd
+  home: /opt/httpd
+  user:
+    name: apache
+    gid: 48
+    uid: 48
+    shell: /sbin/nologin
+    home: /opt/httpd
+  image_name: "{{ httpd_image }}"
 ```
 Dependencies
 ------------
@@ -47,7 +68,16 @@ None
 Example Playbook
 ----------------
 
-
+```yaml
+- name: Install and boot asset servers
+  hosts: "bastion"
+  become: true
+  roles:
+    - role: bdbstudios.openshift_bootstrap.boot_asset_servers
+      tags:
+        - always
+...
+```
 License
 -------
 
