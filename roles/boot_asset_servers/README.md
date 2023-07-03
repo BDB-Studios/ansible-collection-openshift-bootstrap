@@ -17,7 +17,7 @@ Role Variables
 --------------
 
 ```yaml
-
+rhcos_version: "4.13/latest"
 pull_secret: '{"auths":{"none":{"auth": "none"}}}'
 
 tfptd_image: "bdbstudios/tftpd:el8-latest"
@@ -60,6 +60,41 @@ httpd:
     home: /opt/httpd
   image_name: "{{ httpd_image }}"
 ```
+
+Optional Variables
+
+```yaml
+# For Redhat
+rhcos_version: "4.13/latest"
+coreos:
+  base_url: "https://mirror.openshift.com/pub/openshift-v4/x86_64/dependencies/rhcos/{{ rhcos_version }}/"
+  files:
+    - src: "rhcos-live-kernel-x86_64"
+      dest: "/var/lib/tftpboot/rhcos/kernel"
+    - src: "rhcos-live-initramfs.x86_64.img"
+      dest: "/var/lib/tftpboot/rhcos/initramfs.img"
+    - src: "rhcos-live-rootfs.x86_64.img"
+      dest: "/var/www/html/rhcos/rootfs.img"
+  install_disk: "/dev/{{ default_openshift_install_device }}"
+
+```
+
+```yaml
+# For Fedora
+fedcos_version: "38.20230609.3.0"
+coreos:
+  base_url: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/{{ fedcos_version }}/x86_64/fedora-coreos-{{ fedcos_version }}-"
+  files:
+    - src: "live-kernel-x86_64"
+      dest: "/var/lib/tftpboot/rhcos/kernel"
+    - src: "live-initramfs.x86_64.img"
+      dest: "/var/lib/tftpboot/rhcos/initramfs.img"
+    - src: "live-rootfs.x86_64.img"
+      dest: "/var/www/html/rhcos/rootfs.img"
+  install_disk: "/dev/{{ default_openshift_install_device }}"
+```
+
+
 Dependencies
 ------------
 
