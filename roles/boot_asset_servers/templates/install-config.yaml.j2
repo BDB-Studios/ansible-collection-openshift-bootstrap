@@ -1,0 +1,56 @@
+---
+
+{%- set compute_nodes = 0 -%}
+{%- if workers is defined -%}
+{%- set compute_nodes = workers | length -%}
+{%- endif -%}
+{%- set control_plane_nodes = control_planes | length %}
+
+apiVersion: v1
+baseDomain: {{ dns.domain }}
+{% if configure_squid_proxy | bool == true  -%}
+{% if use_proxy_authentication | bool == true -%}
+    {% set proxy_prefix= proxy_user | default('coreos') + ":" + proxy_password | default('coreospassword') + "@" -%}
+  {% else -%}
+      {% set proxy_prefix="" -%}
+  {% endif %}
+proxy:
+  httpProxy: "http://{{ proxy_prefix }}{{ bastion.name }}.{{ dns.clusterid }}.{{ dns.domain }}:{{ proxy_port }}"
+  httpsProxy: "http://{{ proxy_prefix }}{{ bastion.name }}.{{ dns.clusterid }}.{{ dns.domain }}:{{ proxy_port }}"
+  noProxy: "{{ no_proxy_base }},{{ no_proxy_lans }},{{ no_proxy_networks }}"
+{%- endif %}
+
+compute:
+  - hyperthreading: Enabled
+    name: worker
+    replicas: {{ compute_nodes }}
+controlPlane:
+  hyperthreading: Enabled
+  name: master
+  replicas: {{ control_plane_nodes }}
+metadata:
+  name: {{ dns.clusterid }}
+networking:
+  clusterNetworks:
+    - cidr: {{ openshift.cluster_network | default("10.128.0.0/14") }}
+      hostPrefix: {{ openshift.cluster_net_host_prefix | default(23) }}
+  networkType: OpenShiftSDN
+  machineNetwork:
+  {% if vlans is defined %}
+  {% for vlan in vlans %}
+
+    - cidr: {{ vlan.network }}/{{ vlan.prefix }}
+
+  {% endfor %}
+  {% else %}
+    - cidr: {{ networking_defaults.network }}/{{ networking_defaults.prefix }}
+  {% endif %}
+
+  serviceNetwork:
+    - {{ openshift.service_network | default("172.30.0.0/16") }}
+platform:
+  none: {}
+pullSecret: '{{ pull_secret }}'
+sshKey: "{{ boot_asset_servers_ssh_key_public_key }}"
+
+...

@@ -1,0 +1,106 @@
+---
+
+- name: Ensure we have our staging paths
+  ansible.builtin.file:
+    path: "{{ httpd.home }}/{{ directory }}"
+    state: directory
+    owner: "{{ httpd.user.name }}"
+    group: "{{ httpd.user.name }}"
+    mode: 0755
+  loop:
+    - rhcos
+    - ignition
+  loop_control:
+    loop_var: directory
+  tags:
+    - httpd
+
+- name: Ensure that selinux allows our traffic on the new http port # noqa: ignore-errors
+  ansible.builtin.command:
+    cmd: "semanage port -a -t http_port_t -p tcp {{ httpd.ports.new }}"
+  notify:
+    - Restart httpd service
+  ignore_errors: true
+  failed_when: false
+  changed_when: true
+  tags:
+    - httpd
+
+- name: Copy our ignition files to the ignition web directory
+  ansible.builtin.copy:
+    src: "/root/{{ dns.clusterid + '.' + dns.domain }}/{{ ign_file }}"
+    dest: "{{ httpd.home }}/ignition/{{ ign_file }}"
+    remote_src: true
+    owner: "{{ httpd.user.name }}"
+    group: "{{ httpd.user.name }}"
+    mode: 0755
+  loop:
+    - "bootstrap.ign"
+    - "master.ign"
+    - "worker.ign"
+  loop_control:
+    loop_var: ign_file
+  tags:
+    - httpd
+
+- name: Copy boot files to the rhcos directory
+  ansible.builtin.copy:
+    src: "/opt/tftp/rhcos/{{ filename }}"
+    dest: "{{ httpd.home }}/rhcos/{{ filename }}"
+    remote_src: true
+    owner: "{{ httpd.user.name }}"
+    group: "{{ httpd.user.name }}"
+    mode: 0755
+  loop:
+    - "kernel"
+    - "initramfs.img"
+    - "rootfs.img"
+  loop_control:
+    loop_var: filename
+  tags:
+    - httpd
+
+- name: Ensure we have our podman image
+  containers.podman.podman_image:
+    name: "{{ httpd.image_name }}"
+  tags:
+    - httpd
+
+- name: Create our podman container
+  containers.podman.podman_container:
+    name: "{{ httpd.service }}"
+    image: "{{ httpd.image_name }}"
+    state: present
+    recreate: true
+    network_mode: host
+    privileged: true
+    volume:
+      - "{{ httpd.home }}/rhcos:/var/www/html/rhcos:z"
+      - "{{ httpd.home }}/ignition:/var/www/html/ignition:z"
+    generate_systemd:
+      path: /etc/systemd/system/
+      new: true
+      restart_policy: always
+      time: 120
+      names: true
+      container_prefix: ""
+      separator: ""
+  tags:
+    - httpd
+  notify: Enable and Start Httpd Service
+
+- name: Enable firewall ports
+  ansible.posix.firewalld:
+    state: enabled
+    port: "{{ firewall_port }}"
+    permanent: true
+  loop:
+    - "8080/tcp"
+  loop_control:
+    loop_var: firewall_port
+  notify:
+    - Reload Firewall
+  tags:
+    - httpd
+
+...

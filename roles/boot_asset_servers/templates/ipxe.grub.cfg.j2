@@ -1,0 +1,59 @@
+{# https://docs.openshift.com/container-platform/4.11/installing/installing_bare_metal/installing-bare-metal-network-customizations.html #}
+{% if server.ipaddr is defined and server.networkifacename is defined %}
+  {% if server.vlan is defined %}
+    {% set ipconfig = server.ipaddr + "::" + server.vlan.router + ":" + server.vlan.netmask + ":" + server.name + "." + dns.clusterid + "." + dns.domain %}
+  {% else %}
+    {% set ipconfig = server.ipaddr + "::" + dhcp.router + ":" + dhcp.netmask + ":" + server.name + "." + dns.clusterid + "." + dns.domain %}
+  {% endif %}
+  {% if server.bond is defined %}
+    {% if server.vlan.id is defined %}
+      {% set ipconfig = ipconfig + ":" + server.networkifacename + "." + server.vlan.id|string + ":none" %}
+    {% else %}
+      {% set ipconfig = ipconfig + ":" + server.networkifacename + ":none" %}
+    {% endif %}
+    {% set ipconfig = ipconfig + " bond=bond0:" + server.bond.0 +"," + server.bond.1 +":mode=802.3ad,miimon=100" %}
+  {% else %}
+    {% set ipconfig = ipconfig + ":" + server.networkifacename + ":none" %}
+  {% endif %}
+  {% if server.vlan is defined %}
+    {% set ipconfig = ipconfig + " vlan=" + server.networkifacename + "." + server.vlan.id|string + ":bond0" %}
+  {% endif %}
+  {% if server.vlan.forwarder is defined %}
+    {% set ipconfig = ipconfig + " nameserver=" + server.vlan.forwarder %}
+  {% else %}
+    {% set ipconfig = ipconfig + " nameserver=" + bastion.ipaddr %}
+  {% endif %}
+  {% if dns.forwarder1 is defined %}
+    {% set ipconfig = ipconfig + " nameserver=" + dns.forwarder1 %}
+  {% endif %}
+  {% if dns.forwarder2 is defined %}
+    {% set ipconfig = ipconfig + " nameserver=" + dns.forwarder2 %}
+  {% endif %}
+{% else %}
+  {% set ipconfig = "dhcp" %}
+{% endif %}
+
+set default="1"
+
+function load_video {
+  insmod efi_gop
+  insmod efi_uga
+  insmod video_bochs
+  insmod video_cirrus
+  insmod all_video
+}
+
+load_video
+set gfxpayload=keep
+insmod gzio
+insmod part_gpt
+insmod ext2
+
+set timeout=5
+### END /etc/grub.d/00_header ###
+
+### BEGIN /etc/grub.d/10_linux ###
+menuentry 'Install Coreos {{ node_type | capitalize }} Node' --class fedora --class gnu-linux --class gnu --class os {
+  linux rhcos/kernel nomodeset rd.neednet=1 console=tty0 console=ttyS0 disable_ipv6=1 ip={{ ipconfig }} coreos.inst.install_dev={{ server.device|default(coreos.install_disk) }} coreos.live.rootfs_url=http://{{ bastion.ipaddr }}:8080/rhcos/rootfs.img coreos.inst.ignition_url=http://{{ bastion.ipaddr }}:8080/ignition/{{ node_type }}.ign
+  initrd rhcos/initramfs.img
+}

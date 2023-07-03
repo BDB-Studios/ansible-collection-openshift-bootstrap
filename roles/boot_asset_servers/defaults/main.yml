@@ -1,0 +1,45 @@
+---
+rhcos_version: "4.13/latest"
+pull_secret: '{"auths":{"none":{"auth": "none"}}}'
+
+tfptd_image: "bdbstudios/tftpd:el8-latest"
+tftpd:
+  packages:
+    absent:
+      - tftp-server
+      - syslinux
+    present:
+      - dnf-utils
+  service: "tftp"
+  home: /opt/tftp
+  user:
+    name: ftp
+    uid: 14
+    gid: 50
+    home: /opt/tftp
+    shell: /sbin/nologin
+  image_name: "{{ tfptd_image }}"
+
+httpd_image: "bdbstudios/httpd:el8-latest"
+httpd:
+  packages:
+    present: []
+    absent:
+      - httpd
+      - nginx
+  ports:
+    original: 80
+    new: 8080
+  directories:
+    - /var/www/html/rhcos
+  service: httpd
+  home: /opt/httpd
+  user:
+    name: apache
+    gid: 48
+    uid: 48
+    shell: /sbin/nologin
+    home: /opt/httpd
+  image_name: "{{ httpd_image }}"
+
+...
