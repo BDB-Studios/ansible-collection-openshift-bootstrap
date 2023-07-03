@@ -1,0 +1,18 @@
+---
+
+- name: Ensure old tftp packages are removed
+  ansible.builtin.dnf:
+    state: absent
+    name: "{{ tftpd.packages.absent }}"
+    autoremove: true
+  tags:
+    - tftpd
+
+- name: Install tftp packages
+  ansible.builtin.dnf:
+    state: present
+    name: "{{ tftpd.packages.present }}"
+  tags:
+    - tftpd
+
+...

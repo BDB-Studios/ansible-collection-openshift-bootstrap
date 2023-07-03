@@ -1,0 +1,28 @@
+---
+
+- name: Restart TFTP
+  ansible.builtin.systemd:
+    name: "{{ tftpd.service }}"
+    state: restarted
+    daemon_reload: true
+
+- name: Enable and Start TFTP
+  ansible.builtin.systemd:
+    name: "{{ tftpd.service }}"
+    enabled: true
+    daemon_reload: true
+    state: started
+
+- name: Reload Firewall
+  ansible.builtin.command:
+    cmd: "firewall-cmd --reload"
+  failed_when: false
+  changed_when: true
+
+- name: TFTP Selinux
+  ansible.builtin.command:
+    cmd: "restorecon -RFv /var/lib/tftpboot/"
+  failed_when: false
+  changed_when: true
+
+...

@@ -1,0 +1,20 @@
+---
+
+- name: Ensure we have a ftp group
+  ansible.builtin.group:
+    name: "{{ tftpd.user.name }}"
+    gid: "{{ tftpd.user.gid }}"
+  tags:
+    - tftpd
+
+- name: Ensure our ftp user exists
+  ansible.builtin.user:
+    name: "{{ tftpd.user.name }}"
+    home: "{{ tftpd.user.home }}"
+    uid: "{{ tftpd.user.uid }}"
+    group: "{{ tftpd.user.name }}"
+    shell: "{{ tftpd.user.shell }}"
+  tags:
+    - tftpd
+
+...

@@ -1,0 +1,110 @@
+---
+
+- name: Ensure our directories exist
+  ansible.builtin.file:
+    path: "{{ tftpd.home }}/{{ dir }}"
+    state: directory
+    owner: "{{ tftpd.user.name }}"
+    group: "{{ tftpd.user.name }}"
+    mode: 0644
+  loop:
+    - rhcos
+    - pxelinux.cfg
+    - grub2
+  loop_control:
+    loop_var: dir
+  tags:
+    - tftpd
+
+- name: Download CoreOS files
+  ansible.builtin.get_url:
+    url: "{{ coreos.base_url + file.src }}"
+    dest: "{{ tftpd.home }}/rhcos/{{ file.dest | basename }}"
+    owner: "{{ tftpd.user.name }}"
+    group: "{{ tftpd.user.name }}"
+    mode: 0644
+  loop: "{{ coreos.files }}"
+  loop_control:
+    loop_var: file
+  tags:
+    - tftpd
+
+- name: Create our pxe boot files
+  ansible.builtin.include_tasks: tftp_pxe_files.yml
+  tags:
+    - tftpd
+
+- name: Ensure we have our podman image
+  containers.podman.podman_image:
+    name: "{{ tftpd.image_name }}"
+  tags:
+    - tftpd
+
+- name: Find our tftp rhcos files # noqa: var-naming[no-role-prefix]
+  ansible.builtin.find:
+    paths: "{{ tftpd.home }}/rhcos"
+    recurse: true
+  register: rhcos_tftp_found_files
+  tags:
+    - tftpd
+
+- name: Find our tftp grub2 files # noqa: var-naming[no-role-prefix]
+  ansible.builtin.find:
+    paths: "{{ tftpd.home }}/grub2"
+    recurse: true
+  register: grub2_tftp_found_files
+  tags:
+    - tftpd
+
+- name: Find our tftp pxelinux.cfg files # noqa: var-naming[no-role-prefix]
+  ansible.builtin.find:
+    paths: "{{ tftpd.home }}/pxelinux.cfg"
+    recurse: true
+  register: pxelinux_cfg_tftp_found_files
+  tags:
+    - tftpd
+
+- name: Set our file mount facts # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    rhcos_files: "{{ rhcos_tftp_found_files.files | map(attribute='path') }}"
+    pxelinux_files: "{{ pxelinux_cfg_tftp_found_files.files | map(attribute='path') }}"
+    grub2_files: "{{ grub2_tftp_found_files.files | map(attribute='path') }}"
+  tags:
+    - tftpd
+
+- name: Create our podman container
+  containers.podman.podman_container:
+    name: "{{ tftpd.service }}"
+    image: "{{ tftpd.image_name }}"
+    state: present
+    recreate: true
+    network_mode: host
+    privileged: true
+    volume: "{{ lookup('template', 'files.yml.j2') | from_yaml }}"
+    generate_systemd:
+      path: /etc/systemd/system/
+      new: true
+      restart_policy: always
+      time: 120
+      names: true
+      container_prefix: ""
+      separator: ""
+  tags:
+    - tftpd
+  notify: Enable and Start TFTP
+
+- name: Enable firewall services
+  ansible.posix.firewalld:
+    state: enabled
+    service: "{{ service_name }}"
+    permanent: true
+  loop:
+    - tftp
+  loop_control:
+    loop_var: service_name
+  notify:
+    - Reload Firewall
+  tags:
+    - tftpd
+
+...

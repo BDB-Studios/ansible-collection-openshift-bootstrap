@@ -11,11 +11,34 @@ Also configures a tftp server to distribute core linux files during the PXE boot
 Requirements
 ------------
 
-None
+Ansible galaxy `community.posix` collection
 
 Role Variables
 --------------
 
+```yaml
+
+pull_secret: '{"auths":{"none":{"auth": "none"}}}'
+
+tfptd_image: "bdbstudios/tftpd:el8-latest"
+tftpd:
+  packages:
+    absent:
+      - tftp-server
+      - syslinux
+    present:
+      - dnf-utils
+  service: "tftp"
+  home: /opt/tftp
+  user:
+    name: ftp
+    uid: 14
+    gid: 50
+    home: /opt/tftp
+    shell: /sbin/nologin
+  image_name: "{{ tfptd_image }}"
+
+```
 Dependencies
 ------------
 

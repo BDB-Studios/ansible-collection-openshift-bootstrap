@@ -1,0 +1,97 @@
+---
+
+- name: Create our bootstrap pxe files # noqa: var-naming[no-role-prefix]
+  when:
+    - bootstrap is defined
+    - bootstrap | length > 0
+  vars:
+    node_type: bootstrap
+  tags:
+    - tftpd
+  block:
+    - name: Set the bootstrap specific tftp file
+      ansible.builtin.template:
+        src: pxe.conf.j2
+        dest: "{{ tftpd.home }}/pxelinux.cfg/01-{{ server.macaddr | lower | regex_replace (':', '-') }}"
+        mode: 0555
+        owner: "{{ tftpd.user.name }}"
+        group: "{{ tftpd.user.name }}"
+      loop: "{{ bootstrap }}"
+      loop_control:
+        loop_var: server
+
+    - name: Create our bootstrap grub config file
+      ansible.builtin.template:
+        src: ipxe.grub.cfg.j2
+        dest: "{{ tftpd.home }}/grub2/grub.cfg-01-{{ server.macaddr | lower | regex_replace (':', '-') }}"
+        mode: 0555
+        owner: "{{ tftpd.user.name }}"
+        group: "{{ tftpd.user.name }}"
+      loop: "{{ bootstrap }}"
+      loop_control:
+        loop_var: server
+
+
+- name: Create our control plane pxe files  # noqa: var-naming[no-role-prefix]
+  when:
+    - control_planes is defined
+    - control_planes | length > 0
+  vars:
+    node_type: master # This is Openshift nomenclature
+  tags:
+    - tftpd
+  block:
+    - name: Set the control plane specific tftp files
+      ansible.builtin.template:
+        src: pxe.conf.j2
+        dest: "{{ tftpd.home }}/pxelinux.cfg/01-{{ server.macaddr | regex_replace (':', '-') }}"
+        mode: 0555
+        owner: "{{ tftpd.user.name }}"
+        group: "{{ tftpd.user.name }}"
+      loop: "{{ control_planes | lower }}"
+      loop_control:
+        loop_var: server
+
+    - name: Create our control plane grub config file
+      ansible.builtin.template:
+        src: ipxe.grub.cfg.j2
+        dest: "{{ tftpd.home }}/grub2/grub.cfg-01-{{ server.macaddr | lower | regex_replace (':', '-') }}"
+        mode: 0555
+        owner: "{{ tftpd.user.name }}"
+        group: "{{ tftpd.user.name }}"
+      loop: "{{ control_planes }}"
+      loop_control:
+        loop_var: server
+
+- name: Create our worker pxe files  # noqa: var-naming[no-role-prefix]
+  when:
+    - workers is defined
+    - workers | length > 0
+  vars:
+    node_type: worker
+  tags:
+    - tftpd
+  block:
+    - name: Set the worker specific tftp files
+      ansible.builtin.template:
+        src: pxe.conf.j2
+        dest: "{{ tftpd.home }}/pxelinux.cfg/01-{{ server.macaddr | regex_replace (':', '-') }}"
+        mode: 0555
+        owner: "{{ tftpd.user.name }}"
+        group: "{{ tftpd.user.name }}"
+      loop: "{{ workers | lower }}"
+      loop_control:
+        loop_var: server
+
+    - name: Create our worker grub config file
+      ansible.builtin.template:
+        src: ipxe.grub.cfg.j2
+        dest: "{{ tftpd.home }}/grub2/grub.cfg-01-{{ server.macaddr | lower | regex_replace (':', '-') }}"
+        mode: 0555
+        owner: "{{ tftpd.user.name }}"
+        group: "{{ tftpd.user.name }}"
+      loop: "{{ workers }}"
+      loop_control:
+        loop_var: server
+
+...
