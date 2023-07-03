@@ -32,7 +32,7 @@ Example Playbook
   hosts: "bastion"
   become: true
   roles:
-    - role: bdbstudios.openshift_bootstrap.squid_keypair
+    - role: bdbstudios.openshift_bootstrap.ssh_keypair
       tags:
         - always
 ...
