@@ -1,0 +1,11 @@
+---
+
+- name: Install Helm Diff Plugin
+  ansible.builtin.command:
+    cmd: >
+      helm plugin install https://github.com/databus23/helm-diff
+  register: helm_diff
+  failed_when: helm_diff.rc not in (0, 1)
+  changed_when: helm_diff.rc == 0
+
+...

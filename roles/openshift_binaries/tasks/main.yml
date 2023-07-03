@@ -1,0 +1,38 @@
+---
+
+- name: Ensure we have our packages for download and extraction install
+  ansible.builtin.dnf:
+    name: "{{ openshift_support_packages }}"
+    state: present
+
+- name: Install our openshift binaries
+  ansible.builtin.unarchive:
+    dest: "/usr/bin/"
+    src: "{{ openshift.base_url + filename.file }}"
+    remote_src: true
+    creates: "{{ filename.creates }}"
+    extra_opts:
+      - "--exclude=README.md"
+      - "--exclude=LICENSE"
+  loop: "{{ openshift.files }}"
+  loop_control:
+    loop_var: filename
+  tags:
+    - always
+
+- name: Install our helm binary
+  ansible.builtin.unarchive:
+    dest: "/usr/bin/"
+    src: "https://get.helm.sh/helm-v{{ helm_version }}-linux-amd64.tar.gz"
+    creates: "/usr/bin/helm"
+    remote_src: true
+    extra_opts:
+      - "--strip-components=1"
+      - "--exclude=README.md"
+      - "--exclude=LICENSE"
+  notify: Install Helm Diff Plugin
+  tags:
+    - always
+
+
+...
