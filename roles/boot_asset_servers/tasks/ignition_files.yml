@@ -1,0 +1,90 @@
+---
+
+- name: Check if we have an auth config
+  ansible.builtin.stat:
+    path: "/root/{{ dns.clusterid + '.' + dns.domain }}/auth/kubeadmin-password"
+  register: boot_asset_servers_kubeadmin_password
+  no_log: true
+  tags:
+    - always
+
+- name: Create our ignition files
+  when:
+    - not boot_asset_servers_kubeadmin_password.stat.exists
+  tags:
+    - assets
+    - squid
+  block:
+    - name: Ensure our directories are empty
+      ansible.builtin.file:
+        path: "/root/{{ path }}"
+        state: absent
+      loop:
+        - "{{ dns.clusterid + '.' + dns.domain }}"
+      loop_control:
+        loop_var: path
+      changed_when: true
+      failed_when: false
+
+    - name: Ensure we have our directories
+      ansible.builtin.file:
+        path: "/root/{{ path }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0644
+      loop:
+        - "{{ dns.clusterid + '.' + dns.domain }}"
+      loop_control:
+        loop_var: path
+
+    - name: Get the contents of our public key
+      ansible.builtin.command:
+        cmd: "cat /root/.ssh/id_rsa.pub"
+      changed_when: true
+      failed_when: false
+      register: boot_asset_servers_public_key_out
+      no_log: true
+
+    - name: Set pub key fact
+      ansible.builtin.set_fact:
+        boot_asset_servers_ssh_key_public_key: "{{ boot_asset_servers_public_key_out.stdout }}"
+
+    - name: Create our ingition config file
+      ansible.builtin.template:
+        dest: "/root/{{ dns.clusterid + '.' + dns.domain }}/install-config.yaml"
+        src: templates/install-config.yaml.j2
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Create our manifests
+      ansible.builtin.command:
+        cmd: "openshift-install create manifests"
+      args:
+        chdir: "/root/{{ dns.clusterid + '.' + dns.domain }}"
+        creates: "/root/{{ dns.clusterid + '.' + dns.domain }}/manifests"
+      changed_when: true
+      failed_when: false
+
+    - name: Check if we have workers and configure scheduling appropriately
+      when:
+        - workers is defined
+        - workers | length > 0
+      block:
+        - name: Ensure our ControlPlanes are not schedulable when we have worker nodes defined
+          ansible.builtin.lineinfile:
+            path: "/root/{{ dns.clusterid + '.' + dns.domain }}/manifests/cluster-scheduler-02-config.yml"
+            regexp: '^  mastersSchedulable: true$'
+            line: "  mastersSchedulable: false"
+
+    - name: Create our ignition config files
+      ansible.builtin.command:
+        cmd: "openshift-install create ignition-configs"
+      args:
+        chdir: "/root/{{ dns.clusterid + '.' + dns.domain }}"
+        creates: "/root/{{ dns.clusterid + '.' + dns.domain }}/auth"
+      changed_when: true
+      failed_when: false
+
+...
