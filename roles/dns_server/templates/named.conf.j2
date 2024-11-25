@@ -46,7 +46,9 @@ options {
     {% endif %}
 
     {{ dns.forwarder1}};
-    {{ dns.forwarder2}};
+    {% if dns.forwarder2 is defined %}
+    {{ dns.forwarder2 }};
+    {% endif %}
   };
 
   dnssec-validation {{ dnssec_validation | default('yes') }};
